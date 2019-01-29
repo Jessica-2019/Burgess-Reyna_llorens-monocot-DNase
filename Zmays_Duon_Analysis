@@ -1,0 +1,94 @@
+Methods Duon Analysis
+by Sean Stevenson (srs62@cam.ac.uk)
+
+Zea mays vcf files were download from http://cbsusrv04.tc.cornell.edu/users/panzea/download.aspx?filegroupid=16 following instructions. In order to extract the allele frequencies, we ran a custom script as the vcf format was not suitable for use with the vcftools package. These steps produced identical output as that from the vcftools –freq tool (with the following columns: "CHROM",	"POS",	"N_ALLELES", "N_CHR", "ALLELE:FREQ", "ALT_ALLELE:FREQ"). First, only the necessary columns were extracted from the vcf files and all chromosomes concatenated:
+
+awk '{OFS="\t"; print $1, $2, $4, $5, $8}' agpv4_chr1.vcf > agpv4_chr1.vcf_trim
+cat agpv4_chr*.vcf_trim > zm_agpv4.vcf_trim
+
+Then a python script (available at github) scraped the values from the “AC” flag ("Numbers of ALT alleles in order listed"), “DP” flag (“Total Depth”) and the “AD” flag (“Total allelelic depths in order listed").
+
+python vcf_to_freq.py zm_agpv4.vcf_trim
+
+Then, this file was processed to calculate the proportion of the major allele at each polymorphic site:
+
+awk '{split($5, a, ":"); split($6, b, ":"); split($7, c, ":")} {if(a[2] > b[2] && a[2] > c[2]) {max=a[2]} else if(b[2] > a[2] && b[2] > c[2]) {max=b[2]} else if(c[2] > a[2] && c[2] > b[2]) {max=c[2]} {OFS="\t"; if(NR>1) {print $1, $2-1, $2, max}}}' zm_agpv4.vcf_trim.frq  | sort -k1,1 -k2,2n > zm_agpv4_max_proportion.bed
+
+The vcf files were also annotated using the snpEff tool (version 4.3t), e.g.:
+
+java -jar snpEff.jar Zea_mays agpv4_chr1.vcf > agpv4_chr1_ann.vcf
+
+This program uses the B73_RefGen_v4 genome assembly (http://ensembl.gramene.org/Zea_mays/Info/Index), the same as that used for building the vcf files and from where gff and genome sequences were downloaded from.
+
+The annotated vcf files can now have the non-synonymous variant sites extracted and made into a bed file for intersection with the major allele proportion file. 
+
+grep "missense_variant" agpv4_chr*_ann.vcf | awk '{OFS="\t"; print $1, $2-1, $2}' | bedtools intersect -sorted -wb -a stdin -b zm_agpv4_max_proportion.bed | cut -f1,2,3,7 > zm_max_proportion_missense.bed
+
+The four-fold degenerate sites (FFDS) were first identified using a custom python script (available at github) to scan all exons. First the B73_RefGen_V4 genome annotation was used to extract all exon sequences:
+
+awk '($3=="CDS") {print}' Zea_mays.B73_RefGen_v4.41.gff3-1 | awk '{OFS="\t"; split($9, a, ";"); split(a[1], b, ":"); split(b[2], c, "_"); print $1, ($4-1), $5,c[1]"."c[2]"_"$1"_"$4"_"$7}' | sort -k1,1 -k4,4 -k2,2 | bedtools getfasta -name -fi Zea_mays.B73_RefGen_v4.dna.toplevel.fa-1 -bed - -fo Zea_mays.B73_RefGen_v4_CDS.fasta
+python FFDS_bedmaker.py Zea_mays.B73_RefGen_v4_CDS.fasta | sort -k1,1 -k2,2n | uniq > Zea_mays.B73_RefGen_v4_FFDS.bed
+
+This bed file containing all the FFDS in the B73_RefGen_v4 genome assembly was then intersected with the locations of polymorphisms:
+
+bedtools intersect -wb -sorted -a Zmays_FFDS.bed -b zm_agpv4_max_proportion.bed | cut -f1,2,3,4,5,9 > zm_max_proportion_FFDS.bed
+
+Having processed the vcf data and separated out the non-synonymous and FFDS polymorphisms, we can now create our bed files for the two regions of interest: the putative duons and their surrounding exon sequence (see schematic). First, we create a bed file for all the exons:
+
+awk '($3=="CDS") {print}' Zea_mays.AGPv4.38.chr.gff3-1 | sort -k1,1 -k4,4n | bedtools merge -i stdin | uniq > Zmays_CDS.bed
+
+Then we identify duons by finding DGF that lie within exons:
+
+bedtools intersect -a zm_DGF_merged.bed -b Zmays_CDS.bed | uniq > Zmays_duons.bed
+
+Now we want to find all the exon sequence that surrounds these duons:
+
+bedtools intersect -wa -a Zmays_CDS.bed -b Zmays_duons.bed | bedtools subtract -a stdin -b Zmays_duons.bed > Zmays_CDS-non-duon.bed
+
+To check for sequence bias, we run the following command on the two bed files and we can plot bar plots from these values:
+
+bedtools nuc -fi Zea_mays.B73_RefGen_v4.dna.toplevel.fa-1 -bed Zmays_CDS-non-duon.bed | awk '{A+=$6; C+=$7; G+=$8; T+=$9} END {sum=(A+C+G+T); print A/sum, C/sum, G/sum, T/sum}'
+bedtools nuc -fi ../Zea_mays.B73_RefGen_v4.dna.toplevel.fa-1 -bed Zmays_duons.bed | awk '{A+=$6; C+=$7; G+=$8; T+=$9} END {sum=(A+C+G+T); print A/sum, C/sum, G/sum, T/sum}'
+
+Now we can start to quantify the number of both non-synonymous and FFDS polymorphisms that lie in both the duons and their surrounding sequences. 
+
+sort -k1,1 -k2,2n Zmays_duons.bed | uniq | bedtools intersect -wb -sorted -a stdin -b zm_max_proportion_missense.bed | tee Zmays_duon_miss.txt | wc -l
+sort -k1,1 -k2,2n Zmays_CDS-non-duon.bed | uniq | bedtools intersect -wb -sorted -a stdin -b zm_max_proportion_missense.bed | tee Zmays_CDS-non-duon_miss.txt | wc -l
+sort -k1,1 -k2,2n Zmays_duons.bed | uniq | bedtools intersect -wb -sorted -a stdin -b zm_max_proportion_FFDS.bed | tee Zmays_duon_FFDS.txt | wc -l
+sort -k1,1 -k2,2n Zmays_CDS-non-duon.bed | uniq | bedtools intersect -wb -sorted -a stdin -b zm_max_proportion_FFDS.bed | tee Zmays_CDS-non-duon_FFDS.txt | wc -l
+
+The values output here reflect the total number of occurrences for either non-synonymous or FFDS polymorphic sites within duons or their surrounding exon sequence. The text files created can be used for further plotting (e.g. violin plots or histograms etc). 
+
+In order to find if the occurrences of FFDS within duons was statistically less than expected a chi squared test was implemented in R:
+
+library(dplyr)
+# these are the frequencies of FFDS within the duon and CDS-non-duon regions respectively.
+observed <- c(3552, 47203)
+df <- data_frame(observed)
+# the probabilities are calculated from the total size of the two regions.
+prob_duon <- 117577/(117577+1412824)
+prob_nonduon <- 1412824/(117577+1412824)
+chi <- chisq.test(df, p=c(prob_duon,prob_nonduon), correct = T)
+chi$p.value
+chi$statistic
+chi$expected
+
+The same approach was used on the occurrences of non-synonymous polymorphic sits:
+
+library(dplyr)
+# these are the frequencies of non-synonymous sites within the duon and CDS-non-duon regions respectively.
+observed <- c(2383, 29610)
+df <- data_frame(observed)
+# the probabilities are calculated from the total size of the two regions.
+prob_duon <- 117577/(117577+1412824)
+prob_nonduon <- 1412824/(117577+1412824)
+chi <- chisq.test(df, p=c(prob_duon,prob_nonduon), correct = T)
+chi$p.value
+chi$statistic
+chi$expected
+
+
+Unix tools used:
+bedtools: v2.26.0
+awk: GNU Awk 4.1.4
+grep: GNU grep 3.1
