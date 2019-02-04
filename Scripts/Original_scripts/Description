@@ -1,0 +1,55 @@
+Scripts used for the Biorxiv publication.
+
+
+##################################################
+# 1. Mapping reads and DHS calling.              #
+##################################################
+
+#First need to create a new bowtie alignment file e.g.
+#bowtie2-build [GENOME] [prefix]
+
+## Final_DNase_analysis.sh [Rep_1_reads_1] [Rep_1_reads_2] [Rep_2_reads_1] [Rep_2_reads_2] [Rep_3_reads_1] [Rep_3_reads_2] [BOWTIE] [GENOME] [NAME]
+# [Rep_1_reads_1] Reads from biological rep 1 mate pair 1
+# [Rep_1_reads_2] Reads from biological rep 1 mate pair 2 etc.
+# [BOWTIE] A bowtie2 alignment file for the species of interest
+# [GENOME] A fasta file of the genome of the species of interest
+# [NAME] prefix that is given to all files e.g. Si_WL
+## The following are run automatically from Final_DNase_analysis.sh
+# Final IDR analysis
+# Final QC Analysis
+
+##################################################
+# 2. Script to check saturation. 
+##################################################
+## Final_saturation_analysis_2.sh [GENOME] [NAME]
+#This must be run after Final_DNase_analysis.sh in the same directory
+# [GENOME] A fasta file of the genome of the species of interest
+# [NAME] corresponds to the ID used in Final_DNase_analysis e.g. Si_WL
+
+##################################################
+# 3. DHS analysis scripts.
+##################################################
+# The following can be used to generate putative network files, linking transcription factors to genes.
+## Motif_Mapping.sh [GENOME] [BED_FILE] [NAME] [ANNOTATION FILE] [EXPRESSION FILE] [TAG] [GFF3 FILE] [CHR FILE]
+# [GENOME] A fasta file of the genome of the species of interest
+# [BED_FILE] BED file containing all regions of interest in the genome (e.g. DGF sites)
+# [NAME] A Prefix to use for output files e.g. Sb for Sorghum Bicolor
+# [ANNOTATION FILE] Motif Annotation FILE
+# [EXPRESSION FILE] File with expression data
+# [TAG] Cell type of interest e.g. bundle sheath =6, whole leaf =5
+# [GFF3 FILE] Annotation file of locations of genes in genome. Comes with genome files when downloaded from phytozome. 
+# [CHR FILE] Description of chromosomes and sizes, created by UCSC faSize --detailed
+## Dependencies
+# annotation_2.2.r
+# BED_annotation_mapping.r
+# merging_scripts.r
+## Note
+# The set of motifs for mapping is specified in the file, this must be changed if you want to use a different set.
+
+## Rscript to test the distribution of a given feature in the genome.
+## Rscript DHS_distribution_mapping.r [ChrFile] [GFF3 file] [Species] [MACSFILE] [SUMMIT]
+# [ChrFile]   = Description of chromosomes and sizes, created by UCSC faSize --detailed
+# [GFF3 file] = Annotation file of locations of genes in genome. Comes with genome files when downloaded from phytozome. 
+# [Species]   = Species Name
+# [MACSFILE]  = MACS peaks file (xls file converted to csv)
+# [SUMMIT]    = MACS peaks summit locations
