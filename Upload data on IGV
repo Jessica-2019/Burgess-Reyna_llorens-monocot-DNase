@@ -1,0 +1,17 @@
+Instructions for uploading DNAse I seq data into a genome browser
+
+The follwing instructions describe how to load DHS (Dnase I Hypersensitive Sites) and/or
+DGF (Digital Genomic Footprints) onto a genome browser like IGV. 
+
+Prerequisites:
+Download the newest version IGV (https://software.broadinstitute.org/software/igv/download)
+Instructions on how to launch IGV come in the "readme.txt" file within the folder. 
+
+Download the genome annotations, genome sequence and bed files for your organism/experiment of choice provided in here
+
+Note: If you are working with different genome versions you can convert the bed files to the corresponding assembly using
+the assembly converter from ENSEMBL (https://plants.ensembl.org/tools.html)
+
+Load the corresponding .gff (annotation) .fa (genome) and .bed (dhs/dgf) onto IGV.
+
+
