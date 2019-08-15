@@ -5,9 +5,19 @@ DGF (Digital Genomic Footprints) onto a genome browser like IGV.
 
 Prerequisites:
 Download the newest version IGV (https://software.broadinstitute.org/software/igv/download)
+
+Download the following genome versions and annotations. 
+Z. mays: Zmays_284_6a
+B. distachyon: Bdistachyon_283_assembly_v2.0
+S. bicolor: Sbicolor_255_v2.0
+S. italica: S.italica_164_v2.fa
+
+
 Instructions on how to launch IGV come in the "readme.txt" file within the folder. 
 
-Download the genome annotations, genome sequence and bed files for your organism/experiment of choice provided in here
+Download the bed files for your organism/experiment of choice provided in here:
+DHS.zip : DHS for all species and cell types
+DGF.zip : DGF for all species and cell types 
 
 Note: If you are working with different genome versions you can convert the bed files to the corresponding assembly using
 the assembly converter from ENSEMBL (https://plants.ensembl.org/tools.html)
